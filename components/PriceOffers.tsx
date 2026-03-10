@@ -78,6 +78,11 @@ const PriceOffers: React.FC = () => {
         if (o.price === bestPrice) {
           if (grouped[sid]) {
             grouped[sid].bestCount += 1;
+            // Mark this specific offer as best
+            const offerIndex = grouped[sid].offers.findIndex(off => off.id === o.id);
+            if (offerIndex !== -1) {
+              (grouped[sid].offers[offerIndex] as any).isBest = true;
+            }
           }
         }
       });
@@ -235,7 +240,12 @@ const PriceOffers: React.FC = () => {
                       <tbody className="divide-y divide-slate-50">
                         {stat.offers.map(o => (
                           <tr key={o.id} className="hover:bg-slate-50/30 transition-colors">
-                            <td className="px-8 py-4 font-bold text-slate-700 uppercase">{o.product?.name}</td>
+                            <td className="px-8 py-4 font-bold text-slate-700 uppercase flex items-center gap-2">
+                              {o.product?.name}
+                              {(o as any).isBest && (
+                                <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                              )}
+                            </td>
                             <td className="px-6 py-4 text-center">
                               <span className="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-full font-black text-xs">₺{o.price.toFixed(2)}</span>
                             </td>
