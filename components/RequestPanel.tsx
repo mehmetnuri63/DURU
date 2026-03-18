@@ -185,14 +185,17 @@ const RequestPanel: React.FC<RequestPanelProps> = ({ userRole }) => {
   }, {} as Record<string, PurchaseRequest[]>);
 
   const groupedArchived = archivedRequests.reduce((acc, req) => {
-    const date = new Date(req.created_at).toLocaleDateString('tr-TR');
+    const d = new Date(req.created_at);
+    const monthYear = d.toLocaleDateString('tr-TR', { month: 'long', year: 'numeric' });
+    const date = d.toLocaleDateString('tr-TR');
     const sName = (req as any).supplier?.name || 'BELİRSİZ FİRMA';
 
-    if (!acc[date]) acc[date] = {};
-    if (!acc[date][sName]) acc[date][sName] = [];
-    acc[date][sName].push(req);
+    if (!acc[monthYear]) acc[monthYear] = {};
+    if (!acc[monthYear][date]) acc[monthYear][date] = {};
+    if (!acc[monthYear][date][sName]) acc[monthYear][date][sName] = [];
+    acc[monthYear][date][sName].push(req);
     return acc;
-  }, {} as Record<string, Record<string, PurchaseRequest[]>>);
+  }, {} as Record<string, Record<string, Record<string, PurchaseRequest[]>>>);
 
   return (
     <div className="space-y-12 max-w-6xl mx-auto">
@@ -466,106 +469,170 @@ const RequestPanel: React.FC<RequestPanelProps> = ({ userRole }) => {
           <h4 className="text-sm font-black text-slate-400 tracking-widest uppercase italic">SATIN ALMA ARŞİVİ</h4>
         </div>
         <div className="space-y-6">
-          {(Object.entries(groupedArchived) as [string, Record<string, PurchaseRequest[]>][]).map(([date, suppliersMap]) => {
-            const dateSuppliers = Object.entries(suppliersMap);
-            const dateTotalAmount = dateSuppliers.reduce((sum, [_, items]) =>
-              sum + items.reduce((s, i) => s + ((i.final_price || 0) * i.quantity), 0), 0);
-            const dateTotalProducts = dateSuppliers.reduce((sum, [_, items]) => sum + items.length, 0);
-            const dateTotalSuppliers = dateSuppliers.length;
-            const isDateExpanded = expandedOrders[`date:${date}`];
+          {Object.entries(groupedArchived).map(([monthYear, datesMap]) => {
+            const monthDates = Object.entries(datesMap);
+            
+            // Calculate Monthly Totals
+            let monthTotalAmount = 0;
+            let monthTotalProducts = 0;
+            const monthSuppliersSet = new Set<string>();
+
+            monthDates.forEach(([_, suppliersMap]: [string, any]) => {
+              Object.entries(suppliersMap).forEach(([sName, items]: [string, any]) => {
+                monthSuppliersSet.add(sName);
+                monthTotalProducts += items.length;
+                items.forEach((i: any) => {
+                  monthTotalAmount += (i.final_price || 0) * i.quantity;
+                });
+              });
+            });
+
+            const isMonthExpanded = expandedOrders[`month:${monthYear}`];
 
             return (
-              <div key={date} className="space-y-3">
-                {/* TARİH SATIRI (ÜST SEVİYE) */}
+              <div key={monthYear} className="space-y-4">
+                {/* AYLIK SATIN ALMA ÖZETİ (EN ÜST SEVİYE) */}
                 <div
-                  onClick={() => setExpandedOrders(prev => ({ ...prev, [`date:${date}`]: !isDateExpanded }))}
-                  className="bg-white/70 backdrop-blur-md border border-slate-200 p-5 rounded-2xl text-slate-800 shadow-sm flex justify-between items-center cursor-pointer hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-blue-100/50 transition-all duration-300 group"
+                  onClick={() => setExpandedOrders(prev => ({ ...prev, [`month:${monthYear}`]: !isMonthExpanded }))}
+                  className="bg-slate-800 border border-slate-700 p-6 rounded-[2rem] text-white shadow-xl flex justify-between items-center cursor-pointer hover:-translate-y-1.5 hover:shadow-slate-200/50 transition-all duration-300 group"
                 >
-                  <div className="flex items-center space-x-4">
-                    <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform duration-300">
-                      <Calendar className="w-6 h-6" />
+                  <div className="flex items-center space-x-5">
+                    <div className="p-4 bg-blue-500 text-white rounded-2xl shadow-lg shadow-blue-500/20 group-hover:rotate-12 transition-transform duration-300">
+                      <Archive className="w-7 h-7" />
                     </div>
                     <div>
-                      <h5 className="text-lg font-black tracking-tight text-slate-800">{date}</h5>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">GÜNLÜK SATIN ALMA ÖZETİ</p>
+                      <h5 className="text-xl font-black tracking-tight text-white uppercase">{monthYear}</h5>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">AYLIK SATIN ALMA ÖZETİ</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-8">
+                  <div className="flex items-center space-x-10">
                     <div className="text-right">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">TEDARİKÇİ</p>
-                      <p className="text-sm font-black text-slate-700">{dateTotalSuppliers}</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">TOPLAM TEDARİKÇİ</p>
+                      <p className="text-lg font-black text-white">{monthSuppliersSet.size}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ÜRÜN (KALEM)</p>
-                      <p className="text-sm font-black text-slate-700">{dateTotalProducts}</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">TOPLAM ÜRÜN</p>
+                      <p className="text-lg font-black text-white">{monthTotalProducts}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">GÜNLÜK TOPLAM</p>
-                      <p className="text-sm font-black text-blue-600">₺{dateTotalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">AYLIK TOPLAM</p>
+                      <p className="text-xl font-black text-blue-400">₺{monthTotalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
                     </div>
-                    <div className="pl-4 border-l border-slate-200">
-                      {isDateExpanded ? <ChevronDown className="w-6 h-6 text-slate-400" /> : <ChevronRight className="w-6 h-6 text-slate-400" />}
+                    <div className="pl-6 border-l border-slate-700">
+                      {isMonthExpanded ? <ChevronDown className="w-7 h-7 text-slate-500" /> : <ChevronRight className="w-7 h-7 text-slate-500" />}
                     </div>
                   </div>
                 </div>
 
-                {/* TEDARİKÇİLER (ORTA SEVİYE) */}
-                {isDateExpanded && (
-                  <div className="pl-8 space-y-3 border-l-2 border-slate-200 ml-6">
-                    {dateSuppliers.map(([sName, items]) => {
-                      const sTotalAmount = items.reduce((sum, item) => sum + ((item.final_price || 0) * item.quantity), 0);
-                      const sKey = `supplier:${date}:${sName}`;
-                      const isSupplierExpanded = expandedOrders[sKey];
+                {/* GÜNLÜK SATIN ALMALAR */}
+                {isMonthExpanded && (
+                  <div className="pl-8 space-y-6 border-l-4 border-slate-100 ml-8 animate-in slide-in-from-left-4 duration-500">
+                    {monthDates.map(([date, suppliersMap]: [string, any]) => {
+                      const dateSuppliers = Object.entries(suppliersMap);
+                      const dateTotalAmount = dateSuppliers.reduce((sum, [_, items]: [string, any]) =>
+                        sum + items.reduce((s: number, i: any) => s + ((i.final_price || 0) * i.quantity), 0), 0);
+                      const dateTotalProducts = dateSuppliers.reduce((sum, [_, items]: [string, any]) => sum + items.length, 0);
+                      const dateTotalSuppliers = dateSuppliers.length;
+                      const isDateExpanded = expandedOrders[`date:${date}`];
 
                       return (
-                        <div key={sName} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                        <div key={date} className="space-y-3">
+                          {/* TARİH SATIRI (ORTA SEVİYE) */}
                           <div
-                            className="p-4 flex justify-between items-center bg-slate-50/30 cursor-pointer hover:bg-slate-50 transition-colors"
-                            onClick={() => setExpandedOrders(prev => ({ ...prev, [sKey]: !isSupplierExpanded }))}
+                            onClick={() => setExpandedOrders(prev => ({ ...prev, [`date:${date}`]: !isDateExpanded }))}
+                            className="bg-white/70 backdrop-blur-md border border-slate-200 p-5 rounded-2xl text-slate-800 shadow-sm flex justify-between items-center cursor-pointer hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-blue-100/50 transition-all duration-300 group"
                           >
-                            <div className="flex items-center space-x-3">
-                              <div className="p-2 bg-white text-slate-400 rounded-lg border border-slate-100 shadow-sm">
-                                <Users className="w-4 h-4" />
+                            <div className="flex items-center space-x-4">
+                              <div className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 group-hover:scale-110 transition-transform duration-300">
+                                <Calendar className="w-6 h-6" />
                               </div>
-                              <h6 className="font-black text-slate-700 uppercase tracking-tight text-sm">{sName}</h6>
+                              <div>
+                                <h5 className="text-lg font-black tracking-tight text-slate-800">{date}</h5>
+                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">GÜNLÜK SATIN ALMA ÖZETİ</p>
+                              </div>
                             </div>
-                            <div className="flex items-center space-x-6">
+
+                            <div className="flex items-center space-x-8">
                               <div className="text-right">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">ÜRÜN</p>
-                                <p className="text-xs font-black text-slate-600">{items.length} Kalem</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">TEDARİKÇİ</p>
+                                <p className="text-sm font-black text-slate-700">{dateTotalSuppliers}</p>
                               </div>
                               <div className="text-right">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">TUTAR</p>
-                                <p className="text-xs font-black text-slate-800">₺{sTotalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">ÜRÜN (KALEM)</p>
+                                <p className="text-sm font-black text-slate-700">{dateTotalProducts}</p>
                               </div>
-                              {isSupplierExpanded ? <ChevronDown className="w-4 h-4 text-slate-300" /> : <ChevronRight className="w-4 h-4 text-slate-300" />}
+                              <div className="text-right">
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">GÜNLÜK TOPLAM</p>
+                                <p className="text-sm font-black text-blue-600">₺{dateTotalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
+                              </div>
+                              <div className="pl-4 border-l border-slate-200">
+                                {isDateExpanded ? <ChevronDown className="w-6 h-6 text-slate-400" /> : <ChevronRight className="w-6 h-6 text-slate-400" />}
+                              </div>
                             </div>
                           </div>
 
-                          {/* ÜRÜNLER (ALT SEVİYE) */}
-                          {isSupplierExpanded && (
-                            <div className="p-4 bg-white">
-                              <table className="w-full text-left text-[11px]">
-                                <thead>
-                                  <tr className="text-slate-400 font-black uppercase tracking-widest border-b border-slate-100">
-                                    <th className="pb-2">Ürün</th>
-                                    <th className="pb-2">Miktar</th>
-                                    <th className="pb-2">Birim Fiyat</th>
-                                    <th className="pb-2 text-right">Toplam</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                  {items.map(item => (
-                                    <tr key={item.id} className="text-slate-600 font-bold">
-                                      <td className="py-2 uppercase">{item.product?.name}</td>
-                                      <td className="py-2">{item.quantity} {item.product?.unit}</td>
-                                      <td className="py-2 text-blue-600">₺{(item.final_price || 0).toFixed(2)}</td>
-                                      <td className="py-2 text-right text-slate-800 font-black">₺{((item.final_price || 0) * item.quantity).toFixed(2)}</td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                          {/* TEDARİKÇİLER (ALT SEVİYE) */}
+                          {isDateExpanded && (
+                            <div className="pl-8 space-y-3 border-l-2 border-slate-200 ml-6 animate-in slide-in-from-left-2 duration-300">
+                              {dateSuppliers.map(([sName, items]: [string, any]) => {
+                                const sTotalAmount = items.reduce((sum: number, item: any) => sum + ((item.final_price || 0) * item.quantity), 0);
+                                const sKey = `supplier:${date}:${sName}`;
+                                const isSupplierExpanded = expandedOrders[sKey];
+
+                                return (
+                                  <div key={sName} className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+                                    <div
+                                      className="p-4 flex justify-between items-center bg-slate-50/30 cursor-pointer hover:bg-slate-50 transition-colors"
+                                      onClick={() => setExpandedOrders(prev => ({ ...prev, [sKey]: !isSupplierExpanded }))}
+                                    >
+                                      <div className="flex items-center space-x-3">
+                                        <div className="p-2 bg-white text-slate-400 rounded-lg border border-slate-100 shadow-sm">
+                                          <Users className="w-4 h-4" />
+                                        </div>
+                                        <h6 className="font-black text-slate-700 uppercase tracking-tight text-sm">{sName}</h6>
+                                      </div>
+                                      <div className="flex items-center space-x-6">
+                                        <div className="text-right">
+                                          <p className="text-[8px] font-black text-slate-400 uppercase">ÜRÜN</p>
+                                          <p className="text-xs font-black text-slate-600">{items.length} Kalem</p>
+                                        </div>
+                                        <div className="text-right">
+                                          <p className="text-[8px] font-black text-slate-400 uppercase">TUTAR</p>
+                                          <p className="text-xs font-black text-slate-800">₺{sTotalAmount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
+                                        </div>
+                                        {isSupplierExpanded ? <ChevronDown className="w-4 h-4 text-slate-300" /> : <ChevronRight className="w-4 h-4 text-slate-300" />}
+                                      </div>
+                                    </div>
+
+                                    {/* ÜRÜNLER */}
+                                    {isSupplierExpanded && (
+                                      <div className="p-4 bg-white animate-in fade-in duration-300">
+                                        <table className="w-full text-left text-[11px]">
+                                          <thead>
+                                            <tr className="text-slate-400 font-black uppercase tracking-widest border-b border-slate-100">
+                                              <th className="pb-2">Ürün</th>
+                                              <th className="pb-2">Miktar</th>
+                                              <th className="pb-2">Birim Fiyat</th>
+                                              <th className="pb-2 text-right">Toplam</th>
+                                            </tr>
+                                          </thead>
+                                          <tbody className="divide-y divide-slate-50">
+                                            {items.map((item: any) => (
+                                              <tr key={item.id} className="text-slate-600 font-bold">
+                                                <td className="py-2 uppercase">{item.product?.name}</td>
+                                                <td className="py-2">{item.quantity} {item.product?.unit}</td>
+                                                <td className="py-2 text-blue-600">₺{(item.final_price || 0).toFixed(2)}</td>
+                                                <td className="py-2 text-right text-slate-800 font-black">₺{((item.final_price || 0) * item.quantity).toFixed(2)}</td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
                           )}
                         </div>
