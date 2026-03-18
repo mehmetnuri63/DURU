@@ -61,7 +61,7 @@ const PriceAnalysis: React.FC = () => {
     const productPrices = priceData[productId];
     if (!productPrices) return null;
     let best = { sId: '', price: Infinity };
-    Object.entries(productPrices).forEach(([sId, info]) => {
+    Object.entries(productPrices).forEach(([sId, info]: [string, any]) => {
       if (info.price < best.price) best = { sId, price: info.price };
     });
     return best.price === Infinity ? null : best;
@@ -74,7 +74,7 @@ const PriceAnalysis: React.FC = () => {
       const best = getBestPriceInfo(req.product_id);
       if (best) {
         // Aynı en ucuz fiyata sahip birden fazla tedarikçi varsa hepsini ekle
-        Object.entries(priceData[req.product_id] || {}).forEach(([sId, info]) => {
+        Object.entries(priceData[req.product_id] || {}).forEach(([sId, info]: [string, any]) => {
           if (info.price === best.price) bestSids.add(sId);
         });
       }
