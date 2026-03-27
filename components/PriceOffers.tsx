@@ -1,13 +1,15 @@
 
 import React, { useState, useEffect } from 'react';
 import { supabase, Product, Supplier, PriceOffer } from '../supabase';
-import { Tag, Plus, Search, Trash2, Edit2, AlertCircle, FileText, Star, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { Tag, Plus, Search, Trash2, Edit2, AlertCircle, FileText, Star, ChevronDown, ChevronRight, Users, Save, Check, Loader2 } from 'lucide-react';
 
 const PriceOffers: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [offers, setOffers] = useState<PriceOffer[]>([]);
   const [expandedSuppliers, setExpandedSuppliers] = useState<Record<string, boolean>>({});
+  const [editPrices, setEditPrices] = useState<Record<string, string>>({});
+  const [updatingSuppliers, setUpdatingSuppliers] = useState<Record<string, boolean>>({});
   const [formData, setFormData] = useState({
     product_id: '',
     supplier_id: '',
@@ -107,6 +109,40 @@ const PriceOffers: React.FC = () => {
     if (!error) {
       setFormData({ product_id: '', supplier_id: '', price: 0, brand: '', features: '', note: '' });
       fetchData();
+    }
+  };
+
+  const handleBulkUpdate = async (supplierId: string, supplierOffers: PriceOffer[]) => {
+    const updates = supplierOffers
+      .filter(o => editPrices[o.id] !== undefined && parseFloat(editPrices[o.id]) !== o.price)
+      .map(o => ({
+        id: o.id,
+        price: parseFloat(editPrices[o.id])
+      }));
+
+    if (updates.length === 0) return;
+
+    setUpdatingSuppliers(prev => ({ ...prev, [supplierId]: true }));
+    
+    try {
+      for (const update of updates) {
+        await supabase
+          .from('price_offers')
+          .update({ price: update.price })
+          .eq('id', update.id);
+      }
+      
+      // Clear local edits for this supplier
+      const newEdits = { ...editPrices };
+      updates.forEach(u => delete newEdits[u.id]);
+      setEditPrices(newEdits);
+      
+      await fetchData();
+    } catch (error) {
+      console.error('Update error:', error);
+      alert('Güncelleme sırasında bir hata oluştu.');
+    } finally {
+      setUpdatingSuppliers(prev => ({ ...prev, [supplierId]: false }));
     }
   };
 
@@ -228,31 +264,66 @@ const PriceOffers: React.FC = () => {
                 {/* Products List (Expanded) */}
                 {isExpanded && (
                   <div className="border-t border-slate-50">
+                    <div className="p-4 bg-slate-50/30 flex justify-end border-b border-slate-50">
+                      <button
+                        onClick={() => handleBulkUpdate(stat.supplier.id, stat.offers)}
+                        disabled={updatingSuppliers[stat.supplier.id] || !stat.offers.some(o => editPrices[o.id] !== undefined && parseFloat(editPrices[o.id]) !== o.price)}
+                        className="flex items-center gap-2 px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-black text-[10px] tracking-widest hover:bg-emerald-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-lg shadow-emerald-100"
+                      >
+                        {updatingSuppliers[stat.supplier.id] ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4" />
+                        )}
+                        FİYATLARI TOPLU GÜNCELLE
+                      </button>
+                    </div>
                     <table className="w-full text-left">
                       <thead className="bg-slate-50/50">
                         <tr>
                           <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Ürün</th>
-                          <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Birim Fiyat</th>
+                          <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Birim Fiyat (₺)</th>
                           <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Marka/Özellik</th>
                           <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Tarih</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-50">
-                        {stat.offers.map(o => (
-                          <tr key={o.id} className="hover:bg-slate-50/30 transition-colors">
-                            <td className="px-8 py-4 font-bold text-slate-700 uppercase flex items-center gap-2">
-                              {o.product?.name}
-                              {(o as any).isBest && (
-                                <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                              )}
-                            </td>
-                            <td className="px-6 py-4 text-center">
-                              <span className="px-4 py-1.5 bg-amber-50 text-amber-600 rounded-full font-black text-xs">₺{o.price.toFixed(2)}</span>
-                            </td>
-                            <td className="px-6 py-4 text-xs font-medium text-slate-500 uppercase italic">{o.brand} {o.features ? `/ ${o.features}` : ''}</td>
-                            <td className="px-8 py-4 text-right text-[10px] font-black text-slate-400">{new Date(o.created_at).toLocaleDateString('tr-TR')}</td>
-                          </tr>
-                        ))}
+                        {stat.offers.map(o => {
+                          const currentPrice = editPrices[o.id] !== undefined ? editPrices[o.id] : o.price.toString();
+                          const hasChanged = editPrices[o.id] !== undefined && parseFloat(editPrices[o.id]) !== o.price;
+
+                          return (
+                            <tr key={o.id} className="hover:bg-slate-50/30 transition-colors">
+                              <td className="px-8 py-4 font-bold text-slate-700 uppercase flex items-center gap-2">
+                                {o.product?.name}
+                                {(o as any).isBest && (
+                                  <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                                )}
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                <div className="relative inline-block">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={currentPrice}
+                                    onChange={e => setEditPrices(prev => ({ ...prev, [o.id]: e.target.value }))}
+                                    className={`
+                                      w-32 px-4 py-1.5 rounded-full font-black text-xs text-center outline-none transition-all border
+                                      ${hasChanged 
+                                        ? 'bg-blue-50 border-blue-200 text-blue-600 ring-2 ring-blue-100' 
+                                        : 'bg-amber-50 border-transparent text-amber-600 focus:border-amber-200'}
+                                    `}
+                                  />
+                                  {hasChanged && (
+                                    <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-6 py-4 text-xs font-medium text-slate-500 uppercase italic">{o.brand} {o.features ? `/ ${o.features}` : ''}</td>
+                              <td className="px-8 py-4 text-right text-[10px] font-black text-slate-400">{new Date(o.created_at).toLocaleDateString('tr-TR')}</td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
