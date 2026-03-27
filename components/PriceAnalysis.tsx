@@ -181,19 +181,19 @@ const PriceAnalysis: React.FC = () => {
         </div>
         
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full text-left border-collapse min-w-[1000px]">
+          <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-100/50">
-                <th className="sticky left-0 z-10 bg-slate-100 p-6 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-r border-slate-200">ÜRÜN / TALEP</th>
+                <th className="sticky left-0 z-10 bg-slate-100 p-4 text-[9px] font-black text-slate-500 uppercase tracking-widest border-r border-slate-200">ÜRÜN / TALEP</th>
                 {filteredSuppliers.map(s => (
-                  <th key={s.id} className="p-6 text-center border-r border-slate-200 min-w-[220px]">
-                    <div className="space-y-3">
-                      <p className="text-[11px] font-black text-slate-800 uppercase tracking-widest leading-tight">{s.name}</p>
+                  <th key={s.id} className="p-3 text-center border-r border-slate-200 min-w-[140px]">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-black text-slate-800 uppercase tracking-tight leading-tight truncate">{s.name}</p>
                       <button 
                         onClick={() => handleOrder(s.id)}
-                        className="w-full py-2 bg-blue-600 text-white rounded-xl text-[10px] font-black hover:bg-blue-700 hover:scale-105 hover:-translate-y-1 active:scale-95 transition-all duration-200 shadow-[0_4px_0_0_#1d4ed8] hover:shadow-[0_6px_0_0_#1d4ed8] active:shadow-none active:translate-y-[4px]"
+                        className="w-full py-1.5 bg-blue-600 text-white rounded-lg text-[9px] font-black hover:bg-blue-700 hover:scale-105 active:scale-95 transition-all duration-200 shadow-[0_2px_0_0_#1d4ed8] active:shadow-none active:translate-y-[2px]"
                       >
-                        SİPARİŞ VER
+                        SİPARİŞ
                       </button>
                     </div>
                   </th>
@@ -205,12 +205,12 @@ const PriceAnalysis: React.FC = () => {
                 const best = getBestPriceInfo(req.product_id);
                 return (
                   <tr key={req.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="sticky left-0 z-10 bg-white p-6 border-r border-slate-200 group-hover:bg-slate-50">
+                    <td className="sticky left-0 z-10 bg-white p-4 border-r border-slate-200 group-hover:bg-slate-50 min-w-[180px]">
                       <div className="flex flex-col">
-                        <span className="font-black text-slate-800 uppercase text-sm">{req.product?.name}</span>
-                        <div className="flex items-center space-x-2 mt-1">
-                          <span className="text-[10px] font-black px-2 py-0.5 bg-blue-50 text-blue-600 rounded uppercase">{req.quantity} {req.product?.unit}</span>
-                          <span className="text-[10px] font-bold text-slate-400 uppercase italic truncate">{req.brand || 'Standart'}</span>
+                        <span className="font-black text-slate-800 uppercase text-xs truncate">{req.product?.name}</span>
+                        <div className="flex items-center space-x-2 mt-0.5">
+                          <span className="text-[9px] font-black px-1.5 py-0.5 bg-blue-50 text-blue-600 rounded uppercase">{req.quantity} {req.product?.unit}</span>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase italic truncate max-w-[80px]">{req.brand || 'Std'}</span>
                         </div>
                       </div>
                     </td>
@@ -222,42 +222,42 @@ const PriceAnalysis: React.FC = () => {
                       return (
                         <td 
                           key={s.id} 
-                          className={`p-3 text-center border-r border-slate-100 transition-all ${!data ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+                          className={`p-1.5 text-center border-r border-slate-100 transition-all ${!data ? 'cursor-not-allowed' : 'cursor-pointer'}`}
                           onClick={() => data && setSelectedSupplierForRequest({...selectedSupplierForRequest, [req.id]: s.id})}
                         >
                           {data ? (
                             <div className={`
-                              flex flex-col items-center justify-center p-3 h-full min-h-[80px] transition-all duration-300
-                              rounded-xl border-2
+                              flex flex-col items-center justify-center p-2 h-full min-h-[60px] transition-all duration-300
+                              rounded-lg border-2
                               ${isBest 
-                                ? 'bg-emerald-400 border-emerald-500 text-black shadow-lg shadow-emerald-100' 
+                                ? 'bg-emerald-400 border-emerald-500 text-black shadow-md shadow-emerald-100' 
                                 : isSelected 
                                   ? 'bg-red-50 border-red-200 text-red-700 shadow-inner' 
                                   : 'bg-white border-transparent hover:border-slate-200 text-slate-600'}
                             `}>
-                              <span className="text-sm font-black">₺{data.price.toFixed(2)}</span>
+                              <span className="text-xs font-black">₺{data.price.toFixed(2)}</span>
                               
                               <div className={`
-                                mt-1 px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter
+                                mt-0.5 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-tighter
                                 ${isBest ? 'bg-black/10 text-black' : 'bg-slate-100 text-slate-400'}
                               `}>
                                 {data.type}
                               </div>
 
                               {isSelected && !isBest && (
-                                <div className="mt-1 flex items-center text-[8px] font-black text-red-500 uppercase">
+                                <div className="mt-0.5 flex items-center text-[7px] font-black text-red-500 uppercase">
                                   <AlertTriangle className="w-2 h-2 mr-0.5" />
-                                  ZARAR: ₺{(data.price - (best?.price || 0)).toFixed(2)}
+                                  -₺{(data.price - (best?.price || 0)).toFixed(2)}
                                 </div>
                               )}
                               
                               {isSelected && isBest && (
-                                <div className="mt-1 w-1 h-1 rounded-full bg-black"></div>
+                                <div className="mt-0.5 w-1 h-1 rounded-full bg-black"></div>
                               )}
                             </div>
                           ) : (
-                            <div className="flex items-center justify-center h-full min-h-[80px] opacity-20 grayscale">
-                              <span className="text-[10px] font-black text-slate-400 uppercase">VERİ YOK</span>
+                            <div className="flex items-center justify-center h-full min-h-[60px] opacity-20 grayscale">
+                              <span className="text-[9px] font-black text-slate-400 uppercase">YOK</span>
                             </div>
                           )}
                         </td>
@@ -270,7 +270,7 @@ const PriceAnalysis: React.FC = () => {
             {/* SÜTUN TOPLAMLARI (GENEL TUTAR) */}
             <tfoot className="bg-slate-900 text-white">
               <tr>
-                <td className="sticky left-0 z-10 bg-slate-900 p-6 font-black text-[10px] uppercase tracking-[0.2em] border-r border-slate-800 text-slate-400">SEÇİLEN TOPLAM</td>
+                <td className="sticky left-0 z-10 bg-slate-900 p-4 font-black text-[9px] uppercase tracking-widest border-r border-slate-800 text-slate-400">SEÇİLEN TOPLAM</td>
                 {filteredSuppliers.map(s => {
                   const supplierTotal = activeRequests.reduce((sum, req) => {
                     if (selectedSupplierForRequest[req.id] === s.id) {
@@ -280,9 +280,9 @@ const PriceAnalysis: React.FC = () => {
                   }, 0);
 
                   return (
-                    <td key={s.id} className="p-6 text-center border-r border-slate-800">
-                      <p className="text-xs font-black text-blue-400 mb-1 tracking-widest uppercase">Firma Toplam</p>
-                      <p className="text-lg font-black tracking-tighter">₺{supplierTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
+                    <td key={s.id} className="p-3 text-center border-r border-slate-800">
+                      <p className="text-[9px] font-black text-blue-400 mb-0.5 tracking-widest uppercase">Toplam</p>
+                      <p className="text-sm font-black tracking-tighter">₺{supplierTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}</p>
                     </td>
                   );
                 })}
